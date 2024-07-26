@@ -1,48 +1,69 @@
 #include <Arduino.h>
 
+#define ON 1
+#define OFF 0
+
 enum ch_dch {CHARGE, DISCHARGE};
 enum high_low {M_HIGH, M_LOW};
-bool Charge_Discharge = CHARGE;
-bool HIGH_LOW_Mode = LOW;
+bool chargeDischarge = CHARGE;
+bool highLowMode = M_LOW;
 
-int RelayControl1 = 4; // Digital Arduino Pins used to activate the relays
-int RelayControl2 = 5;
-int RelayControl3 = 6;
-int RelayControl4 = 7;
+int relayChargeDischarge = 4; // Digital Arduino Pins used to activate the relays
+int relayGridPower = 5;
+int relayChOnOff = 6;
+int relayChHighLow = 7;
+
+void setupCheckSystem();
 
 void setup() {
+    Serial.begin(9600);
     // Definition of the Arduino pins as digital outputs
-    pinMode(RelayControl1, OUTPUT); //Relay for charge/discharge
-    pinMode(RelayControl2, OUTPUT); //Relay for grid powering
-    pinMode(RelayControl3, OUTPUT); //Relay for activating the charger
-    pinMode(RelayControl4, OUTPUT); //Relay for choosing HIGH/LOW mode of the charger
+    pinMode(relayChargeDischarge, OUTPUT); //Relay for charge/discharge
+    pinMode(relayGridPower, OUTPUT); //Relay for grid powering
+    pinMode(relayChOnOff, OUTPUT); //Relay for activating the charger
+    pinMode(relayChHighLow, OUTPUT); //Relay for choosing HIGH/LOW mode of the charger
 }
 
 void loop() {
     //Setup check system
-    digitalWrite(RelayControl2, LOW);   //Grid not powered
-    digitalWrite(RelayControl1, LOW);   //Charging mode
-    digitalWrite(RelayControl3, HIGH);  //Charger set off
-    digitalWrite(RelayControl4, HIGH);  //Charger in LOW mode
+    setupCheckSystem();
     //End of setup check system
-
+    chargeDischarge = CHARGE;
     //Choosing mode
-    if (Charge_Discharge == CHARGE){  //Charging mode
-        digitalWrite(RelayControl2, HIGH);   //Grid powered
-        digitalWrite(RelayControl3, LOW);  //Charger set on
+    if (chargeDischarge == CHARGE){  //Charging mode
+        Serial.println("Entering charging mode");
+        digitalWrite(relayGridPower, ON);   //Grid powered
+        digitalWrite(relayChOnOff, ON);  //Charger set on
         //Choosing charger speed
-        if(HIGH_LOW_Mode == M_LOW) {  //Slow charge
+        highLowMode = M_LOW;
+        if(highLowMode == M_LOW) {  //Slow charge
+            Serial.println("Slow charge");
             delay(30000);   //Slow charge during 30 secondes
         }
-        else if (HIGH_LOW_Mode == M_HIGH){    //Speed charge
-            digitalWrite(RelayControl4, LOW);   //Charger in HIGH mode
-            delay(30000);   //Fast charge during 30 secondes
+        highLowMode = M_HIGH;
+        if (highLowMode == M_HIGH){    //Speed charge
+            Serial.println("Fast charge");
+            digitalWrite(relayChHighLow, ON);   //Charger in HIGH mode
+            delay(10000);   //Fast charge during 10 secondes
         }
     }
 
-    else if (Charge_Discharge == DISCHARGE){  //Discharging mode
-        digitalWrite(RelayControl1, HIGH);   //Discharging mode
-        digitalWrite(RelayControl2, HIGH);   //Grid powered
+    chargeDischarge = DISCHARGE;
+    setupCheckSystem();
+
+    if (chargeDischarge == DISCHARGE){  //Discharging mode
+        Serial.println("Entering discharging mode");
+        digitalWrite(relayChargeDischarge, ON);   //Discharging mode
+        digitalWrite(relayGridPower, ON);   //Grid powered
         delay(30000);   //Discharging during 30 secondes
     }
+}
+
+void setupCheckSystem(){
+    Serial.println("Setup check system begins");
+    digitalWrite(relayGridPower, OFF);   //Grid not powered
+    digitalWrite(relayChargeDischarge, OFF);   //Charging mode
+    digitalWrite(relayChOnOff, OFF);  //Charger set off
+    digitalWrite(relayChHighLow, OFF);  //Charger in LOW mode
+    Serial.println("Setup check system ends");
 }
