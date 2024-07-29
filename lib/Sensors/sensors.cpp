@@ -1,6 +1,13 @@
 #include "sensors.h"
 
 double measureDischargingCurrent(){
+    double dischargingCurrent = 0;
+    double VOutDischarging = 0;
+    const double scale_factor = 0.1;
+    const double vRef = 5.00;
+    const double resConvert = 1024;
+    double resADC = vRef/resConvert;
+    double zeroPoint = vRef/2;
     // Vout is read 1000 Times for precision
     for(int i = 0; i < 1000; i++) {
         VOutDischarging = (VOutDischarging + (resADC * analogRead(dischargingSensor))); 
@@ -25,6 +32,13 @@ double measureDischargingCurrent(){
 }
 
 double measureChargingCurrent(){
+    double VOutCharging = 0;
+    double chargingCurrent = 0;
+    const double scale_factor = 0.1;
+    const double vRef = 5.00;
+    const double resConvert = 1024;
+    double resADC = vRef/resConvert;
+    double zeroPoint = vRef/2;
     // Vout is read 1000 Times for precision
     for(int i = 0; i < 1000; i++) {
         VOutCharging = (VOutCharging + (resADC * analogRead(chargingSensor))); 
