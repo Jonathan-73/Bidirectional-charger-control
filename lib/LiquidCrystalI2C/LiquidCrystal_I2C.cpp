@@ -129,16 +129,6 @@ void LiquidCrystal_I2C::clear(){
 	delayMicroseconds(1000);  // this command takes a long time!
 }
 
-void LiquidCrystal_I2C::clearTop(){
-	this->setCursor(0,0);
-	this->print("                ");
-}
-
-void LiquidCrystal_I2C::clearBottom(){
-	this->setCursor(0,1);
-	this->print("                ");
-}
-
 void LiquidCrystal_I2C::home(){
 	command(LCD_RETURNHOME);  // set cursor position to zero
 	delayMicroseconds(2000);  // this command takes a long time!

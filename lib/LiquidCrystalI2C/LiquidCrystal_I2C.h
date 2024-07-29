@@ -57,8 +57,6 @@ public:
   LiquidCrystal_I2C(uint8_t lcd_Addr,uint8_t lcd_cols,uint8_t lcd_rows);
   void begin(uint8_t cols, uint8_t rows, uint8_t charsize = LCD_5x8DOTS );
   void clear();
-  void clearTop();
-  void clearBottom();
   void home();
   void noDisplay();
   void display();
