@@ -1,96 +1,100 @@
 #include <Arduino.h>
+#include <sensors.h>
+#include "Wire.h"
+#include <LiquidCrystal_I2C.h>
 
-//Pin definition
-#define chargingSensor A0
-#define dischargingSensor A1
-#define gridPoweredSensor A2
+#define ON 1
+#define OFF 0
 
-// Variables for Measured Voltage and Calculated Current
-double VOutCharging = 0;
-double VOutDischarging = 0;
-double chargingCurrent = 0;
-double dischargingCurrent = 0;
+const int button1 = 2;
+const int button2 = 3;
+
+int button1State = 0;
+int button2State = 0;
+
 double measuredDischargingCurrent = 0;
 double measuredChargingCurrent = 0;
 
-// Constants for Scale Factor
-// Use one that matches your version of ACS712
+enum ch_dch {CHARGE, DISCHARGE};
+enum high_low {M_HIGH, M_LOW};
+bool chargeDischarge = CHARGE;
+bool highLowMode = M_LOW;
 
-//const double scale_factor = 0.185; // 5A
-const double scale_factor = 0.1; // 20A
-//const double scale_factor = 0.066; // 30A
+int relayChargeDischarge = 4; // Digital Arduino Pins used to activate the relays
+int relayGridPower = 5;
+int relayChOnOff = 6;
+int relayChHighLow = 7;
 
-// Constants for A/D converter resolution
-// Arduino has 10-bit ADC, so 1024 possible values
-// Reference voltage is 5V if not using AREF external reference
-// Zero point is half of Reference Voltage
+LiquidCrystal_I2C LCD(0x27,16,2); // définit le type d'ecran lcd 16 x 2
 
-const double vRef = 5.00;
-const double resConvert = 1024;
-double resADC = vRef/resConvert;
-double zeroPoint = vRef/2;
+/**
+ * @brief Function which setups the charger with the grid not powered,
+ * in charging mode, with the charger at modes OFF and LOW
+ */
+void setupCheckSystem();
 
-double measureDischargingCurrent();
-double measureChargingCurrent();
-
-void setup(){ 
+void setup() {
     Serial.begin(9600);
+    // Definition of the Arduino pins as digital outputs
+    pinMode(relayChargeDischarge, OUTPUT); //Relay for charge/discharge
+    pinMode(relayGridPower, OUTPUT); //Relay for grid powering
+    pinMode(relayChOnOff, OUTPUT); //Relay for activating the charger
+    pinMode(relayChHighLow, OUTPUT); //Relay for choosing HIGH/LOW mode of the charger
+
+    pinMode(button1, INPUT);
+    pinMode(button2, INPUT);
+
     pinMode(gridPoweredSensor, INPUT);
+
+    LCD.init(); // initialisation de l'afficheur
+    LCD.backlight();
+    LCD.display();
 }
 
-void loop(){
-    measuredChargingCurrent = measureChargingCurrent();
-    measuredDischargingCurrent = measureDischargingCurrent();
-    if(digitalRead(gridPoweredSensor) == HIGH) Serial.println("Grid powered");
-    else Serial.println("Grid not powered");                           
-
-    delay(1000); 
-}
-
-double measureDischargingCurrent(){
-    // Vout is read 1000 Times for precision
-    for(int i = 0; i < 1000; i++) {
-        VOutDischarging = (VOutDischarging + (resADC * analogRead(dischargingSensor))); 
-        delay(1);
+void loop() {
+    //Setup check system
+    setupCheckSystem();
+    //End of setup check system
+    chargeDischarge = chooseMode();
+    //Choosing mode
+    if (chargeDischarge == CHARGE){  //Charging mode
+        Serial.println("Entering charging mode");
+        digitalWrite(relayGridPower, ON);   //Grid powered
+        digitalWrite(relayChOnOff, ON);  //Charger set on
+        //Choosing charger speed
+        highLowMode = M_LOW;
+        if(highLowMode == M_LOW) {  //Slow charge
+            Serial.println("Slow charge");
+            delay(30000);   //Slow charge during 30 secondes
+        }
+        highLowMode = M_HIGH;
+        if (highLowMode == M_HIGH){    //Speed charge
+            Serial.println("Fast charge");
+            digitalWrite(relayChHighLow, ON);   //Charger in HIGH mode
+            delay(10000);   //Fast charge during 10 secondes
+        }
     }
-  
-    // Get Vout in mv
-    VOutDischarging = VOutDischarging /1000;
-  
-    // Convert Vout into Current using Scale Factor
-    dischargingCurrent = (VOutDischarging - zeroPoint)/ scale_factor;                   
 
-    // Print Vout and Current;                  
+    chargeDischarge = DISCHARGE;
+    setupCheckSystem();
 
-    Serial.print("Vout discharging = ");           
-    Serial.print(VOutDischarging,2); 
-    Serial.print(" V");                            
-    Serial.print("\t Discharging current = ");                  
-    Serial.print(dischargingCurrent,2);
-    Serial.println(" A");
-    return dischargingCurrent;
+    if (chargeDischarge == DISCHARGE){  //Discharging mode
+        Serial.println("Entering discharging mode");
+        digitalWrite(relayChargeDischarge, ON);   //Discharging mode
+        digitalWrite(relayGridPower, ON);   //Grid powered
+        delay(30000);   //Discharging during 30 secondes
+    }
 }
 
-double measureChargingCurrent(){
-    // Vout is read 1000 Times for precision
-    for(int i = 0; i < 1000; i++) {
-        VOutCharging = (VOutCharging + (resADC * analogRead(chargingSensor))); 
-        delay(1);
-    }
-  
-    // Get Vout in mv
-    VOutCharging = VOutCharging /1000;
-  
-    // Convert Vout into Current using Scale Factor
-    chargingCurrent = (VOutCharging - zeroPoint)/ scale_factor;                   
+void setupCheckSystem(){
+    Serial.println("Setup check system begins");
+    digitalWrite(relayGridPower, OFF);   //Grid not powered
+    digitalWrite(relayChargeDischarge, OFF);   //Charging mode
+    digitalWrite(relayChOnOff, OFF);  //Charger set off
+    digitalWrite(relayChHighLow, OFF);  //Charger in LOW mode
+    Serial.println("Setup check system ends");
+}
 
-    // Print Vout and Current;                  
-
-    Serial.print("Vout charging = ");           
-    Serial.print(VOutCharging,2); 
-    Serial.print(" V");                            
-    Serial.print("\t Charging current = ");                  
-    Serial.print(chargingCurrent,2);
-    Serial.println(" A");
-    return chargingCurrent;
+bool chooseMode(){
+    
 }
