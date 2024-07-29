@@ -135,7 +135,7 @@ void LiquidCrystal_I2C::clearTop(){
 }
 
 void LiquidCrystal_I2C::clearBottom(){
-	this->setCursor(1,0);
+	this->setCursor(0,1);
 	this->print("                ");
 }
 
