@@ -156,9 +156,12 @@ void loop() {
                     delay(200);
                     verifyIfCanCharge();
                 }
-                digitalWrite(relayChOnOff, OFF);  //Charger set on
-                delay(60000);    //Waiting 1 minute for balancing of battery
+                digitalWrite(relayChOnOff, OFF);  //Charger set off
+                for(int i = 0; i < 60; i++){    //Waiting 1 minute for balancing of battery
+                delay(1000);
                 verifyIfCanCharge();    //If battery not full
+                if(canCharge()) break;
+                }
                 while(canCharge){       //Finishing the charge in slow mode
                     digitalWrite(relayChHighLow, OFF);   //Charger in LOW mode
                     digitalWrite(relayChOnOff, ON);  //Charger set on
