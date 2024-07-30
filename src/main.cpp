@@ -157,6 +157,8 @@ void loop() {
                     verifyIfCanCharge();
                 }
                 digitalWrite(relayChOnOff, OFF);  //Charger set off
+                LCD.clear();
+                LCD.print("Balancing");
                 for(int i = 0; i < 60; i++){    //Waiting 1 minute for balancing of battery
                     delay(1000);
                     verifyIfCanCharge();    //If battery not full
