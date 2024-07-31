@@ -88,8 +88,8 @@ void setup() {
 
     pinMode(gridPoweredSensor, INPUT);  //Pin for the binary sensor which verifies if the grid is powered
 
-    pinMode(canChargePin, INPUT);       //pins connected to the relays of the BMS
-    pinMode(canDischargePin, INPUT);    //which allows or not charge or discharge
+    pinMode(canChargePin, INPUT_PULLUP);       //pins connected to the relays of the BMS
+    pinMode(canDischargePin, INPUT_PULLUP);    //which allows or not charge or discharge
 
     LCD.init(); // initialisation of the screen
     LCD.createChar(1, ok);
@@ -109,7 +109,7 @@ void loop() {
     setupCheckSystem();
     //End of setup check system
     do{
-        if(digitalRead(gridPoweredSensor) == HIGH) isGridConnected = true;
+        if(digitalRead(gridPoweredSensor) == LOW) isGridConnected = true;
         else isGridConnected = false;
         LCD.clear();
         LCD.print("Waiting for");
@@ -223,23 +223,24 @@ void setupCheckSystem(){
 void chooseMode(){
     bool choiceChDch = CHARGE;
     bool choiceMode = M_LOW;
-    verifyIfCanCharge();
-    verifyIfCanDischarge();
-    //Printing of the selection screen
-    LCD.clear();
-    LCD.print("Charge:");
-    LCD.setCursor(7,0);
-    if(canCharge) LCD.print(char(1));
-    else LCD.print("X");
-    LCD.setCursor(9,0);
-    LCD.print("Disch:");
-    LCD.setCursor(15,0);
-    if(canDischarge)LCD.print(char(1));
-    else LCD.print("X");
+
 
     button2State = LOW;
     while(button2State != HIGH){    //First selection screen
-        LCDClearBottom();
+        verifyIfCanCharge();
+        verifyIfCanDischarge();
+        //Printing of the selection screen
+        LCD.clear();
+        LCD.print("Charge:");
+        LCD.setCursor(7,0);
+        if(canCharge) LCD.print(char(1));
+        else LCD.print("X");
+        LCD.setCursor(9,0);
+        LCD.print("Disch:");
+        LCD.setCursor(15,0);
+        if(canDischarge)LCD.print(char(1));
+        else LCD.print("X");
+        LCD.setCursor(0,1);
         button1State = digitalRead(button1);
         if(button1State == HIGH) choiceChDch = (choiceChDch + 1)%2;
         if(choiceChDch == CHARGE) LCD.print("CH or DCH: CH?");
@@ -251,7 +252,20 @@ void chooseMode(){
     if (choiceChDch == DISCHARGE) return;   //If discharge mode chosen no need for more information
     button2State = LOW;
     while(button2State != HIGH){    //Second choice screen to choose between high and low modes
-        LCDClearBottom();
+        verifyIfCanCharge();
+        verifyIfCanDischarge();
+        //Printing of the selection screen
+        LCD.clear();
+        LCD.print("Charge:");
+        LCD.setCursor(7,0);
+        if(canCharge) LCD.print(char(1));
+        else LCD.print("X");
+        LCD.setCursor(9,0);
+        LCD.print("Disch:");
+        LCD.setCursor(15,0);
+        if(canDischarge)LCD.print(char(1));
+        else LCD.print("X");
+        LCD.setCursor(0,1);
         button1State = digitalRead(button1);
         if(button1State == HIGH) choiceMode = (choiceMode + 1)%2;
         if(choiceMode == M_LOW) LCD.print("CH MODE: LOW?");
@@ -270,11 +284,11 @@ void LCDClearBottom(){
 }
 
 void verifyIfCanCharge(){
-    if (digitalRead(canChargePin) == HIGH) canCharge = true;
+    if (digitalRead(canChargePin) == LOW) canCharge = true;
     else canCharge = false;
 }
 
 void verifyIfCanDischarge(){
-    if (digitalRead(canDischargePin) == HIGH) canDischarge = true;
+    if (digitalRead(canDischargePin) == LOW) canDischarge = true;
     else canDischarge = false;
 }
