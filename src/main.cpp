@@ -6,7 +6,7 @@
 #define ON 0
 #define OFF 1
 
-const int button1 = 2;
+const int button1 = A3;
 const int button2 = 3;
 
 int button1State = 0;
