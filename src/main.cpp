@@ -74,6 +74,11 @@ void verifyIfCanCharge();
  */
 void verifyIfCanDischarge();
 
+/**
+ * @brief Function which verifies if the grid is connected
+ */
+void verifyIfGridConnected();
+
 void setup() {
     Serial.begin(9600);
     //Definition of the Arduino pins as digital outputs
@@ -100,17 +105,11 @@ void setup() {
 }
 
 void loop() {
-    // if(digitalRead(canChargePin) == HIGH) Serial.print("Pin Charge HIGH      ");
-    // else Serial.print("Pin Charge LOW       ");
-    // if(digitalRead(canDischargePin) == HIGH) Serial.println("Pin Discharge HIGH      ");
-    // else Serial.println("Pin Discharge LOW       ");
-
     //Setup check system
     setupCheckSystem();
     //End of setup check system
     do{
-        if(digitalRead(gridPoweredSensor) == LOW) isGridConnected = true;
-        else isGridConnected = false;
+        verifyIfGridConnected();
         LCD.clear();
         LCD.print("Waiting for");
         LCD.setCursor(0,1);
@@ -123,7 +122,7 @@ void loop() {
     chooseMode();
     if (chargeDischarge == CHARGE){  //Charging mode
         Serial.println("Entering charging mode");
-        while(canCharge){
+        while(canCharge && isGridConnected){
             digitalWrite(relayGridPower, ON);   //Grid powered
             digitalWrite(relayChOnOff, ON);  //Charger set on
             //Choosing charger speed
@@ -141,7 +140,7 @@ void loop() {
                 delay(200);
             }
             if (highLowMode == M_HIGH){    //Speed charge
-                while(canCharge){
+                while(canCharge && isGridConnected){
                     digitalWrite(relayChHighLow, ON);   //Charger in HIGH mode
                     Serial.println("Fast charge");
                     measuredChargingCurrent = measureChargingCurrent();
@@ -155,6 +154,7 @@ void loop() {
                     LCD.print("FAST CHARGING");
                     delay(200);
                     verifyIfCanCharge();
+                    verifyIfGridConnected();
                 }
                 digitalWrite(relayChOnOff, OFF);  //Charger set off
                 LCD.clear();
@@ -164,7 +164,7 @@ void loop() {
                     verifyIfCanCharge();    //If battery not full
                     if(canCharge) break;
                 }
-                while(canCharge){       //Finishing the charge in slow mode
+                while(canCharge && isGridConnected){       //Finishing the charge in slow mode
                     digitalWrite(relayChHighLow, OFF);   //Charger in LOW mode
                     digitalWrite(relayChOnOff, ON);  //Charger set on
                     Serial.println("Slow charge");
@@ -179,16 +179,18 @@ void loop() {
                     LCD.print("SLOW CHARGING");
                     delay(200);
                     verifyIfCanCharge();
+                    verifyIfGridConnected();
                 }
             }
             verifyIfCanCharge();
+            verifyIfGridConnected();
         }
         LCD.clear();
         LCD.print("BATTERY FULL");
         delay(2000);
     }
     if (chargeDischarge == DISCHARGE){  //Discharging mode
-        while(canDischarge){
+        while(canDischarge && isGridConnected){
             digitalWrite(relayChargeDischarge, ON);   //Discharging mode
             digitalWrite(relayGridPower, ON);   //Grid powered
             Serial.println("Entering discharging mode");
@@ -203,6 +205,7 @@ void loop() {
             LCD.print("DISCHARGING");
             delay(200);   //Discharging during 30 secondes
             verifyIfCanDischarge();
+            verifyIfGridConnected();
         }
         LCD.clear();
         LCD.print("BATTERY EMPTY");
@@ -216,7 +219,6 @@ void setupCheckSystem(){
     digitalWrite(relayChargeDischarge, OFF);   //Charging mode
     digitalWrite(relayChOnOff, OFF);  //Charger set off
     digitalWrite(relayChHighLow, OFF);  //Charger in LOW mode
-    isGridConnected = false;
     Serial.println("Setup check system ends");
 }
 
@@ -291,4 +293,9 @@ void verifyIfCanCharge(){
 void verifyIfCanDischarge(){
     if (digitalRead(canDischargePin) == LOW) canDischarge = true;
     else canDischarge = false;
+}
+
+void verifyIfGridConnected(){
+        if(digitalRead(gridPoweredSensor) == LOW) isGridConnected = true;
+        else isGridConnected = false;
 }
