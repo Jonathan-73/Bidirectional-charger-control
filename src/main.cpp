@@ -1,6 +1,8 @@
 #include <Arduino.h>
 #include <sensors.h>
 #include "Wire.h"
+#include <SPI.h>
+#include <mcp2515.h>
 #include <LiquidCrystal_I2C.h>
 
 #define ON 0
@@ -32,6 +34,8 @@ const int relayChHighLow = 7;
 const int canChargePin = 8;
 const int canDischargePin = 9;
 
+int SOCBattery = 0;
+
 byte ok[8] = {      //Caracter for check ✓ sign on LCD screen
     0b00000,
     0b00001,
@@ -43,7 +47,32 @@ byte ok[8] = {      //Caracter for check ✓ sign on LCD screen
     0b00000
 };
 
+byte bottomArrow[8] = {      //Caracter for bottom arrow sign on LCD screen
+    0b00000,
+    0b00100,
+    0b00100,
+    0b00100,
+    0b10101,
+    0b01110,
+    0b00100,
+    0b00000
+};
+
+byte topArrow[8] = {      //Caracter for top arrow sign on LCD screen
+    0b00000,
+    0b00100,
+    0b01110,
+    0b10101,
+    0b00100,
+    0b00100,
+    0b00100,
+    0b00000
+};
+
 LiquidCrystal_I2C LCD(0x27,16,2); // definition of the screen with its adress and size
+
+struct can_frame canMsg;    //Structure of an object which will receipt CAN messages
+MCP2515 mcp2515(10);        //Object for controlling the MCP2515 module
 
 /**
  * @brief Function which setups the charger with the grid not powered,
@@ -79,8 +108,14 @@ void verifyIfCanDischarge();
  */
 void verifyIfGridConnected();
 
+/**
+ * @brief Function which reads via the CAN connection the SOC of the battery
+ * @return a percentage of the SOC of the battery
+ */
+int readSOCFromCAN();
+
 void setup() {
-    Serial.begin(9600);
+    Serial.begin(115200);
     //Definition of the Arduino pins as digital outputs
     pinMode(relayChargeDischarge, OUTPUT); //Relay for charge/discharge
     pinMode(relayGridPower, OUTPUT); //Relay for grid powering
@@ -96,8 +131,14 @@ void setup() {
     pinMode(canChargePin, INPUT_PULLUP);       //pins connected to the relays of the BMS
     pinMode(canDischargePin, INPUT_PULLUP);    //which allows or not charge or discharge
 
+    mcp2515.reset();                            //Setting of the CAN communication
+    mcp2515.setBitrate(CAN_125KBPS, MCP_8MHZ);  //with a bitrate of 125kbit/s and a clock of 8MHz
+    mcp2515.setNormalMode();
+
     LCD.init(); // initialisation of the screen
     LCD.createChar(1, ok);
+    LCD.createChar(2, bottomArrow);
+    LCD.createChar(3, topArrow);
     LCD.backlight();
     LCD.display();
     LCD.clear();
@@ -130,10 +171,19 @@ void loop() {
                 Serial.println("Slow charge");
                 measuredChargingCurrent = measureChargingCurrent();
                 LCD.clear();
-                LCD.print("Measure: ");
+                LCD.print("SOC:");
+                LCD.setCursor(4,0);
+                SOCBattery = readSOCFromCAN();
+                if(SOCBattery != -1) {
+                    LCD.print(SOCBattery);
+                    LCD.setCursor(7,0);
+                    LCD.print("%");
+                } else LCD.print("NA");
                 LCD.setCursor(9,0);
+                LCD.print(char(2));
+                LCD.setCursor(10,0);
                 LCD.print(measuredChargingCurrent);
-                LCD.setCursor(14,0);
+                LCD.setCursor(15,0);
                 LCD.print("A");
                 LCD.setCursor(0,1);
                 LCD.print("SLOW CHARGING");
@@ -145,10 +195,19 @@ void loop() {
                     Serial.println("Fast charge");
                     measuredChargingCurrent = measureChargingCurrent();
                     LCD.clear();
-                    LCD.print("Measure: ");
+                    LCD.print("SOC:");
+                    LCD.setCursor(4,0);
+                    SOCBattery = readSOCFromCAN();
+                    if(SOCBattery != -1) {
+                        LCD.print(SOCBattery);
+                        LCD.setCursor(7,0);
+                        LCD.print("%");
+                    } else LCD.print("NA");
                     LCD.setCursor(9,0);
+                    LCD.print(char(2));
+                    LCD.setCursor(10,0);
                     LCD.print(measuredChargingCurrent);
-                    LCD.setCursor(14,0);
+                    LCD.setCursor(15,0);
                     LCD.print("A");
                     LCD.setCursor(0,1);
                     LCD.print("FAST CHARGING");
@@ -170,10 +229,19 @@ void loop() {
                     Serial.println("Slow charge");
                     measuredChargingCurrent = measureChargingCurrent();
                     LCD.clear();
-                    LCD.print("Measure: ");
+                    LCD.print("SOC:");
+                    LCD.setCursor(4,0);
+                    SOCBattery = readSOCFromCAN();
+                    if(SOCBattery != -1) {
+                        LCD.print(SOCBattery);
+                        LCD.setCursor(7,0);
+                        LCD.print("%");
+                    } else LCD.print("NA");
                     LCD.setCursor(9,0);
+                    LCD.print(char(2));
+                    LCD.setCursor(10,0);
                     LCD.print(measuredChargingCurrent);
-                    LCD.setCursor(14,0);
+                    LCD.setCursor(15,0);
                     LCD.print("A");
                     LCD.setCursor(0,1);
                     LCD.print("SLOW CHARGING");
@@ -196,14 +264,23 @@ void loop() {
             Serial.println("Entering discharging mode");
             measuredDischargingCurrent = measureDischargingCurrent();
             LCD.clear();
-            LCD.print("Measure: ");
+            LCD.print("SOC:");
+            LCD.setCursor(4,0);
+            SOCBattery = readSOCFromCAN();
+            if(SOCBattery != -1) {
+                LCD.print(SOCBattery);
+                LCD.setCursor(7,0);
+                LCD.print("%");
+            } else LCD.print("NA");
             LCD.setCursor(9,0);
+            LCD.print(char(3));
+            LCD.setCursor(10,0);
             LCD.print(measuredDischargingCurrent);
-            LCD.setCursor(14,0);
+            LCD.setCursor(15,0);
             LCD.print("A");
             LCD.setCursor(0,1);
             LCD.print("DISCHARGING");
-            delay(200);   //Discharging during 30 secondes
+            delay(200);
             verifyIfCanDischarge();
             verifyIfGridConnected();
         }
@@ -225,8 +302,6 @@ void setupCheckSystem(){
 void chooseMode(){
     bool choiceChDch = CHARGE;
     bool choiceMode = M_LOW;
-
-
     button2State = LOW;
     while(button2State != HIGH){    //First selection screen
         verifyIfCanCharge();
@@ -296,6 +371,21 @@ void verifyIfCanDischarge(){
 }
 
 void verifyIfGridConnected(){
-        if(digitalRead(gridPoweredSensor) == LOW) isGridConnected = true;
-        else isGridConnected = false;
+    if(digitalRead(gridPoweredSensor) == LOW) isGridConnected = true;
+    else isGridConnected = false;
+}
+
+int readSOCFromCAN(){
+    int SOC = -1;
+    while(SOC == -1){
+        if (mcp2515.readMessage(&canMsg) == MCP2515::ERROR_OK) {
+            if(canMsg.can_id == 0x11){
+                SOC = int(canMsg.data[6] / 0x64 * 100);
+                Serial.print(" SOC = ");
+                Serial.print(SOC);
+                Serial.println("%");
+            }
+        }
+    }
+    return SOC;
 }
