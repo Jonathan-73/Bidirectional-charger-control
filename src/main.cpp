@@ -10,7 +10,7 @@ void setup() {
   Serial.begin(115200);
   
   mcp2515.reset();
-  mcp2515.setBitrate(CAN_125KBPS);
+  mcp2515.setBitrate(CAN_125KBPS, MCP_8MHZ);
   mcp2515.setNormalMode();
   
   Serial.println("------- CAN Read ----------");
@@ -23,6 +23,11 @@ void loop() {
     Serial.print(" "); 
     Serial.print(canMsg.can_dlc, HEX); // print DLC
     Serial.print(" ");
+    if(canMsg.can_id == 0x11){
+        Serial.print(" SOC = ");
+        Serial.print(canMsg.data[6] / 0x64 * 100, DEC);
+        Serial.println("%");
+    }
     
     for (int i = 0; i<canMsg.can_dlc; i++)  {  // print the data
       Serial.print(canMsg.data[i],HEX);
@@ -32,3 +37,4 @@ void loop() {
     Serial.println();      
   }
 }
+
