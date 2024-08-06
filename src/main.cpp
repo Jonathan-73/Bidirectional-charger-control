@@ -385,6 +385,9 @@ int readSOCFromCAN(){
                 Serial.print(SOC);
                 Serial.println("%");
             }
+        } else {
+            SOC = -1;
+            break;
         }
     }
     return SOC;
