@@ -31,9 +31,6 @@ const int relayGridPower = 5;
 const int relayChOnOff = 6;
 const int relayChHighLow = 7;
 
-const int canChargePin = 8;
-const int canDischargePin = 9;
-
 int SOCBattery = 0;
 
 byte ok[8] = {      //Caracter for check ✓ sign on LCD screen
@@ -128,9 +125,6 @@ void setup() {
 
     pinMode(gridPoweredSensor, INPUT);  //Pin for the binary sensor which verifies if the grid is powered
 
-    pinMode(canChargePin, INPUT_PULLUP);       //pins connected to the relays of the BMS
-    pinMode(canDischargePin, INPUT_PULLUP);    //which allows or not charge or discharge
-
     mcp2515.reset();                            //Setting of the CAN communication
     mcp2515.setBitrate(CAN_125KBPS, MCP_8MHZ);  //with a bitrate of 125kbit/s and a clock of 8MHz
     mcp2515.setNormalMode();
@@ -161,6 +155,7 @@ void loop() {
 
     //Choosing mode
     chooseMode();
+    int timer = 100;
     if (chargeDischarge == CHARGE){  //Charging mode
         Serial.println("Entering charging mode");
         while(canCharge && isGridConnected){
@@ -212,7 +207,10 @@ void loop() {
                     LCD.setCursor(0,1);
                     LCD.print("FAST CHARGING");
                     delay(200);
-                    verifyIfCanCharge();
+                    if(timer == 100){
+                        verifyIfCanCharge();
+                        timer = 0;
+                    } else timer++;
                     verifyIfGridConnected();
                 }
                 digitalWrite(relayChOnOff, OFF);  //Charger set off
@@ -246,11 +244,17 @@ void loop() {
                     LCD.setCursor(0,1);
                     LCD.print("SLOW CHARGING");
                     delay(200);
-                    verifyIfCanCharge();
+                    if(timer == 100){
+                        verifyIfCanCharge();
+                        timer = 0;
+                    } else timer++;
                     verifyIfGridConnected();
                 }
             }
-            verifyIfCanCharge();
+            if(timer == 100){
+                verifyIfCanCharge();
+                timer = 0;
+            } else timer++;
             verifyIfGridConnected();
         }
         LCD.clear();
@@ -303,9 +307,13 @@ void chooseMode(){
     bool choiceChDch = CHARGE;
     bool choiceMode = M_LOW;
     button2State = LOW;
+    int timer = 100;
     while(button2State != HIGH){    //First selection screen
-        verifyIfCanCharge();
-        verifyIfCanDischarge();
+        if (timer == 100){
+            verifyIfCanCharge();
+            verifyIfCanDischarge();
+            timer = 0;
+        } else timer++;
         //Printing of the selection screen
         LCD.clear();
         LCD.print("Charge:");
@@ -328,9 +336,13 @@ void chooseMode(){
     chargeDischarge = choiceChDch;
     if (choiceChDch == DISCHARGE) return;   //If discharge mode chosen no need for more information
     button2State = LOW;
+    timer = 100;
     while(button2State != HIGH){    //Second choice screen to choose between high and low modes
-        verifyIfCanCharge();
-        verifyIfCanDischarge();
+        if (timer == 100){
+            verifyIfCanCharge();
+            verifyIfCanDischarge();
+            timer = 0;
+        } else timer++;
         //Printing of the selection screen
         LCD.clear();
         LCD.print("Charge:");
@@ -361,13 +373,51 @@ void LCDClearBottom(){
 }
 
 void verifyIfCanCharge(){
-    if (digitalRead(canChargePin) == LOW) canCharge = true;
-    else canCharge = false;
+    // if (digitalRead(canChargePin) == LOW) canCharge = true;
+    // else canCharge = false;
+    int CANIntegrity = -1;
+    while(CANIntegrity == -1){
+        if (mcp2515.readMessage(&canMsg) == MCP2515::ERROR_OK) {
+            if(canMsg.can_id == 0x15){
+                Serial.print("CAN value for charging: ");
+                Serial.println(canMsg.data[6] && 0b10000000, HEX);
+                CANIntegrity = 0;
+                if(canMsg.data[6] && 0b10000000 == 0x80) canCharge = true;
+                else {
+                    canCharge = false;
+                }
+            }
+        }
+        // else {
+        //     canCharge = false;
+        //     Serial.println("CAN disconnected");
+        //     break;
+        // }
+    }
 }
 
 void verifyIfCanDischarge(){
-    if (digitalRead(canDischargePin) == LOW) canDischarge = true;
-    else canDischarge = false;
+    // if (digitalRead(canDischargePin) == LOW) canDischarge = true;
+    // else canDischarge = false;
+    int CANIntegrity = -1;
+    while(CANIntegrity == -1){
+        if (mcp2515.readMessage(&canMsg) == MCP2515::ERROR_OK) {
+            if(canMsg.can_id == 0x15){
+                Serial.print("CAN value for discharging: ");
+                Serial.println(canMsg.data[6] && 0b01000000, HEX);
+                CANIntegrity = 0;
+                if(canMsg.data[6] && 0b01000000 == 0x40) canDischarge = true;
+                else {
+                    canDischarge = false;
+                }
+            }
+        }
+        // else {
+        //     canDischarge = false;
+        //     Serial.println("Can disconnected");
+        //     break;
+        // }
+    }
 }
 
 void verifyIfGridConnected(){
