@@ -373,8 +373,6 @@ void LCDClearBottom(){
 }
 
 void verifyIfCanCharge(){
-    // if (digitalRead(canChargePin) == LOW) canCharge = true;
-    // else canCharge = false;
     int CANIntegrity = -1;
     while(CANIntegrity == -1){
         if (mcp2515.readMessage(&canMsg) == MCP2515::ERROR_OK) {
@@ -388,17 +386,10 @@ void verifyIfCanCharge(){
                 }
             }
         }
-        // else {
-        //     canCharge = false;
-        //     Serial.println("CAN disconnected");
-        //     break;
-        // }
     }
 }
 
 void verifyIfCanDischarge(){
-    // if (digitalRead(canDischargePin) == LOW) canDischarge = true;
-    // else canDischarge = false;
     int CANIntegrity = -1;
     while(CANIntegrity == -1){
         if (mcp2515.readMessage(&canMsg) == MCP2515::ERROR_OK) {
@@ -412,11 +403,6 @@ void verifyIfCanDischarge(){
                 }
             }
         }
-        // else {
-        //     canDischarge = false;
-        //     Serial.println("Can disconnected");
-        //     break;
-        // }
     }
 }
 
